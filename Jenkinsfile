@@ -10,6 +10,18 @@ pipeline {
             }
         }
 
+        stage('Analyse SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=backend-app \
+                        -Dsonar.projectName=backend-app
+                    '''
+                }
+            }
+        }
+
         stage('Build Spring Boot') {
             steps {
                 sh 'mvn clean install -DskipTests'
