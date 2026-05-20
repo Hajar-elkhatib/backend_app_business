@@ -10,6 +10,9 @@ import ma.ensi.backend_businnes_app.DTOS.request.UpdateEntrepreneurRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.EntrepreneurProfileResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class EntrepreneurService {
 
@@ -74,5 +77,35 @@ public class EntrepreneurService {
         response.setBusinessType(entrepreneur.getBusinessType());
 
         return response;
+    }
+    public List<EntrepreneurProfileResponse> getAllEntrepreneurs() {
+        return entrepreneurRepository.findAll()
+                .stream()
+                .map(entrepreneur -> {
+                    User user = userRepository.findById(entrepreneur.getUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    EntrepreneurProfileResponse response = new EntrepreneurProfileResponse();
+                    response.setId(entrepreneur.getId());
+                    response.setUserId(entrepreneur.getUserId());
+                    response.setFullName(user.getFullName());
+                    response.setEmail(user.getEmail());
+                    response.setPhone(user.getPhone());
+                    response.setCompanyName(entrepreneur.getCompanyName());
+                    response.setBusinessType(entrepreneur.getBusinessType());
+                    return response;
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Delete Entrepreneur
+    public void deleteEntrepreneur(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Entrepreneur entrepreneur = entrepreneurRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Entrepreneur not found"));
+
+        entrepreneurRepository.delete(entrepreneur);
+        userRepository.delete(user);
     }
 }

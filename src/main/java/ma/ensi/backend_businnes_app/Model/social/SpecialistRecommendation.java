@@ -1,7 +1,6 @@
 package ma.ensi.backend_businnes_app.Model.social;
 
-import  ma.ensi.backend_businnes_app.Model.auth.Specialist;
-import ma.ensi.backend_businnes_app.Model.core.Project;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;

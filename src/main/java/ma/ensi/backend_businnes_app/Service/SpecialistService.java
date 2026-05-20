@@ -8,6 +8,9 @@ import ma.ensi.backend_businnes_app.DTOS.request.UpdateSpecialistRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.SpecialistProfileResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class SpecialistService {
 
@@ -85,5 +88,63 @@ public class SpecialistService {
         response.setAvailabilityStatus(specialist.getAvailabilityStatus());
         response.setCompletedProjects(specialist.getCompletedProjects());
         return response;
+    }
+    public List<SpecialistProfileResponse> getAllSpecialists() {
+        return specialistRepository.findAll()
+                .stream()
+                .map(specialist -> {
+                    User user = userRepository.findById(specialist.getUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return mapToResponse(user, specialist);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Get Specialists by Availability
+    public List<SpecialistProfileResponse> getByAvailability(String status) {
+        return specialistRepository.findByAvailabilityStatus(status)
+                .stream()
+                .map(specialist -> {
+                    User user = userRepository.findById(specialist.getUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return mapToResponse(user, specialist);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Get Specialists by Sector
+    public List<SpecialistProfileResponse> getBySector(String sector) {
+        return specialistRepository.findBySectorsContaining(sector)
+                .stream()
+                .map(specialist -> {
+                    User user = userRepository.findById(specialist.getUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return mapToResponse(user, specialist);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Get Specialists by Skill
+    public List<SpecialistProfileResponse> getBySkill(String skill) {
+        return specialistRepository.findBySkillsContaining(skill)
+                .stream()
+                .map(specialist -> {
+                    User user = userRepository.findById(specialist.getUserId())
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return mapToResponse(user, specialist);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Delete Specialist
+    public void deleteSpecialist(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Specialist specialist = specialistRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+
+        specialistRepository.delete(specialist);
+        userRepository.delete(user);
     }
 }

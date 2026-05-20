@@ -1,6 +1,6 @@
 package ma.ensi.backend_businnes_app.Model.social;
 
-import ma.ensi.backend_businnes_app.Model.core.Report;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;

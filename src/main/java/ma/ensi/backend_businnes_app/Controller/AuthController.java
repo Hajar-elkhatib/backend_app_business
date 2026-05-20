@@ -37,5 +37,11 @@ public class AuthController {
             @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout() {
+        // JWT is stateless — frontend deletes token
+        // Backend just confirms
+        return ResponseEntity.ok("Logged out successfully");
+    }
 
 }
