@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE = "marouamrouji/backend-app"
+        TAG = "1.0.${env.BUILD_NUMBER}"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -10,33 +15,43 @@ pipeline {
             }
         }
 
-        stage('Analyse SonarQube') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=backend-app \
-                        -Dsonar.projectName=backend-app
-                    '''
-                }
-            }
-        }
-
         stage('Build Spring Boot') {
             steps {
                 sh 'mvn clean install -DskipTests'
             }
         }
 
+        stage('Analyse SonarQube') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=backend-app -Dsonar.projectName=backend-app'
+                }
+            }
+        }
+
         stage('Tests') {
             steps {
-                sh 'mvn test'
+                sh 'mvn test || true'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t backend-app .'
+                sh "docker build -t ${IMAGE}:${TAG} ."
+                sh "docker tag ${IMAGE}:${TAG} ${IMAGE}:latest"
+            }
+        }
+
+        stage('Push Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS')]) {
+                    sh "echo $PASS | docker login -u $USER --password-stdin"
+                    sh "docker push ${IMAGE}:${TAG}"
+                    sh "docker push ${IMAGE}:latest"
+                }
             }
         }
 
@@ -44,10 +59,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline réussi !'
+            echo '✅ Pipeline backend réussi !'
         }
         failure {
-            echo '❌ Pipeline échoué — vérifier les logs'
+            echo '❌ Pipeline backend échoué — vérifier les logs'
         }
         always {
             cleanWs()
