@@ -25,7 +25,7 @@ public class EntrepreneurService {
         this.userRepository = userRepository;
     }
 
-    // ✅ Get Profile
+
     public EntrepreneurProfileResponse getProfile(String userId) {
 
         User user = userRepository.findById(userId)
@@ -46,11 +46,11 @@ public class EntrepreneurService {
         return response;
     }
 
-    // ✅ Edit Profile
+
     public EntrepreneurProfileResponse updateProfile(String userId,
                                                      UpdateEntrepreneurRequest request) {
 
-        // 1. Find and update User
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -58,7 +58,7 @@ public class EntrepreneurService {
         if (request.getPhone() != null) user.setPhone(request.getPhone());
         userRepository.save(user);
 
-        // 2. Find and update Entrepreneur
+
         Entrepreneur entrepreneur = entrepreneurRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Entrepreneur not found"));
 
@@ -66,7 +66,7 @@ public class EntrepreneurService {
         if (request.getBusinessType() != null) entrepreneur.setBusinessType(request.getBusinessType());
         entrepreneurRepository.save(entrepreneur);
 
-        // 3. Return updated profile
+
         EntrepreneurProfileResponse response = new EntrepreneurProfileResponse();
         response.setId(entrepreneur.getId());
         response.setUserId(userId);
@@ -97,7 +97,7 @@ public class EntrepreneurService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Delete Entrepreneur
+
     public void deleteEntrepreneur(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));

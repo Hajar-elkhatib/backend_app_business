@@ -39,7 +39,7 @@ public class SpecialistService {
     public SpecialistProfileResponse updateProfile(String userId,
                                                    UpdateSpecialistRequest request) {
 
-        // 1. Find and update User
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -47,7 +47,7 @@ public class SpecialistService {
         if (request.getPhone() != null) user.setPhone(request.getPhone());
         userRepository.save(user);
 
-        // 2. Find and update Specialist
+
         Specialist specialist = specialistRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Specialist not found"));
 
@@ -63,7 +63,7 @@ public class SpecialistService {
         if (request.getIndustryExperience() != 0) specialist.setIndustryExperience(request.getIndustryExperience());
         specialistRepository.save(specialist);
 
-        // 3. Return updated profile
+
         return mapToResponse(user, specialist);
     }
 
@@ -100,7 +100,7 @@ public class SpecialistService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Get Specialists by Availability
+
     public List<SpecialistProfileResponse> getByAvailability(String status) {
         return specialistRepository.findByAvailabilityStatus(status)
                 .stream()
@@ -112,7 +112,7 @@ public class SpecialistService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Get Specialists by Sector
+
     public List<SpecialistProfileResponse> getBySector(String sector) {
         return specialistRepository.findBySectorsContaining(sector)
                 .stream()
@@ -124,7 +124,7 @@ public class SpecialistService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Get Specialists by Skill
+
     public List<SpecialistProfileResponse> getBySkill(String skill) {
         return specialistRepository.findBySkillsContaining(skill)
                 .stream()
@@ -136,7 +136,7 @@ public class SpecialistService {
                 .collect(Collectors.toList());
     }
 
-    // ✅ Delete Specialist
+
     public void deleteSpecialist(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));

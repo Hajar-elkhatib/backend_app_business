@@ -24,11 +24,11 @@ public class ConversationService {
         this.conversationMessageRepository = conversationMessageRepository;
     }
 
-    // Start Conversation
+
     public Conversation startConversation(String entrepreneurId,
                                           String specialistId,
                                           String projectId) {
-        // Check if conversation already exists
+
         return conversationRepository
                 .findByEntrepreneurIdAndSpecialistId(entrepreneurId, specialistId)
                 .orElseGet(() -> {
@@ -41,17 +41,17 @@ public class ConversationService {
                 });
     }
 
-    // Get All Conversations by Entrepreneur
+
     public List<Conversation> getConversationsByEntrepreneur(String entrepreneurId) {
         return conversationRepository.findByEntrepreneurId(entrepreneurId);
     }
 
-    //  Get All Conversations by Specialist
+
     public List<Conversation> getConversationsBySpecialist(String specialistId) {
         return conversationRepository.findBySpecialistId(specialistId);
     }
 
-    //  Get All Messages in Conversation
+
     public List<MessageResponse> getMessages(String conversationId) {
         return conversationMessageRepository
                 .findByConversationIdOrderByTimestampAsc(conversationId)
@@ -60,7 +60,7 @@ public class ConversationService {
                 .collect(Collectors.toList());
     }
 
-    // Save Message (called by WebSocket controller)
+
     public MessageResponse saveMessage(SendMessageRequest request) {
         Conversation_Mesage message = new Conversation_Mesage();
         message.setConversationId(request.getConversationId());
@@ -72,7 +72,7 @@ public class ConversationService {
         return mapToResponse(saved);
     }
 
-    // Delete Conversation
+
     public void deleteConversation(String conversationId) {
         conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new RuntimeException("Conversation not found"));
@@ -80,7 +80,7 @@ public class ConversationService {
         conversationRepository.deleteById(conversationId);
     }
 
-    // Helper
+
     private MessageResponse mapToResponse(Conversation_Mesage message) {
         MessageResponse response = new MessageResponse();
         response.setId(message.getId());

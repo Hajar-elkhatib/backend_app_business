@@ -20,7 +20,7 @@ public class ComplaintService {
         this.complaintRepository = complaintRepository;
     }
 
-    // Create Complaint
+
     public ComplaintResponse createComplaint(ComplaintRequest request) {
         Complaint complaint = new Complaint();
         complaint.setUserId(request.getUserId());
@@ -35,7 +35,7 @@ public class ComplaintService {
         return mapToResponse(saved);
     }
 
-    //  Get All Complaints (Admin)
+
     public List<ComplaintResponse> getAllComplaints() {
         return complaintRepository.findAll()
                 .stream()
@@ -43,7 +43,7 @@ public class ComplaintService {
                 .collect(Collectors.toList());
     }
 
-    //  Get Complaints by User
+
     public List<ComplaintResponse> getComplaintsByUser(String userId) {
         return complaintRepository.findByUserId(userId)
                 .stream()
@@ -51,7 +51,7 @@ public class ComplaintService {
                 .collect(Collectors.toList());
     }
 
-    //  Get Complaints by Status
+
     public List<ComplaintResponse> getComplaintsByStatus(String status) {
         return complaintRepository.findByStatus(status)
                 .stream()
@@ -59,7 +59,7 @@ public class ComplaintService {
                 .collect(Collectors.toList());
     }
 
-    //  Get Complaints by Category
+
     public List<ComplaintResponse> getComplaintsByCategory(String category) {
         return complaintRepository.findByCategory(category)
                 .stream()
@@ -67,21 +67,21 @@ public class ComplaintService {
                 .collect(Collectors.toList());
     }
 
-    //  Get Single Complaint
+
     public ComplaintResponse getComplaintById(String id) {
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
         return mapToResponse(complaint);
     }
 
-    //  Update Complaint (Admin treats or closes)
+
     public ComplaintResponse updateComplaint(String id, UpdateComplaintRequest request) {
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
 
         if (request.getStatus() != null) {
             complaint.setStatus(request.getStatus());
-            // Set resolvedAt when closed or resolved
+
             if (request.getStatus().equals("RESOLVED") ||
                     request.getStatus().equals("CLOSED")) {
                 complaint.setResolvedAt(new Date());
@@ -96,14 +96,14 @@ public class ComplaintService {
         return mapToResponse(saved);
     }
 
-    // Delete Complaint
+
     public void deleteComplaint(String id) {
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Complaint not found"));
         complaintRepository.delete(complaint);
     }
 
-    //  Helper
+
     private ComplaintResponse mapToResponse(Complaint complaint) {
         ComplaintResponse response = new ComplaintResponse();
         response.setId(complaint.getId());

@@ -19,35 +19,35 @@ public class EvaluationController {
         this.evaluationService = evaluationService;
     }
 
-    //  Create Evaluation
+
     @PostMapping
     public ResponseEntity<EvaluationResponse> createEvaluation(
             @RequestBody EvaluationRequest request) {
         return ResponseEntity.ok(evaluationService.createEvaluation(request));
     }
 
-    // Get All Evaluations for Specialist
+
     @GetMapping("/specialist/{specialistId}")
     public ResponseEntity<List<EvaluationResponse>> getBySpecialist(
             @PathVariable String specialistId) {
         return ResponseEntity.ok(evaluationService.getEvaluationsBySpecialist(specialistId));
     }
 
-    // Get All Evaluations by Entrepreneur
+
     @GetMapping("/entrepreneur/{entrepreneurId}")
     public ResponseEntity<List<EvaluationResponse>> getByEntrepreneur(
             @PathVariable String entrepreneurId) {
         return ResponseEntity.ok(evaluationService.getEvaluationsByEntrepreneur(entrepreneurId));
     }
 
-    // Get Single Evaluation
+
     @GetMapping("/{id}")
     public ResponseEntity<EvaluationResponse> getById(
             @PathVariable String id) {
         return ResponseEntity.ok(evaluationService.getEvaluationById(id));
     }
 
-    //  Delete Evaluation
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteEvaluation(
             @PathVariable String id) {

@@ -20,48 +20,47 @@ public class ComplaintController {
         this.complaintService = complaintService;
     }
 
-    // ✅ Create Complaint
+
     @PostMapping
     public ResponseEntity<ComplaintResponse> createComplaint(
             @RequestBody ComplaintRequest request) {
         return ResponseEntity.ok(complaintService.createComplaint(request));
     }
 
-    // Get All (Admin)
+
     @GetMapping
     public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
-    // Get by User
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ComplaintResponse>> getByUser(
             @PathVariable String userId) {
         return ResponseEntity.ok(complaintService.getComplaintsByUser(userId));
     }
 
-    // Get by Status
+
     @GetMapping("/status/{status}")
     public ResponseEntity<List<ComplaintResponse>> getByStatus(
             @PathVariable String status) {
         return ResponseEntity.ok(complaintService.getComplaintsByStatus(status));
     }
 
-    // Get by Category
+
     @GetMapping("/category/{category}")
     public ResponseEntity<List<ComplaintResponse>> getByCategory(
             @PathVariable String category) {
         return ResponseEntity.ok(complaintService.getComplaintsByCategory(category));
     }
 
-    // Get Single
+
     @GetMapping("/{id}")
     public ResponseEntity<ComplaintResponse> getById(
             @PathVariable String id) {
         return ResponseEntity.ok(complaintService.getComplaintById(id));
     }
 
-    //  Update (Admin treats/closes)
+
     @PutMapping("/{id}")
     public ResponseEntity<ComplaintResponse> updateComplaint(
             @PathVariable String id,
@@ -69,7 +68,7 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.updateComplaint(id, request));
     }
 
-    // Delete
+
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteComplaint(
             @PathVariable String id) {

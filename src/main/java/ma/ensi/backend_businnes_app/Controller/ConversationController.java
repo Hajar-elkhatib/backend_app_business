@@ -19,7 +19,7 @@ public class ConversationController {
         this.conversationService = conversationService;
     }
 
-    //  Start Conversation
+
     @PostMapping
     public ResponseEntity<Conversation> startConversation(
             @RequestParam String entrepreneurId,
@@ -29,7 +29,7 @@ public class ConversationController {
                 conversationService.startConversation(entrepreneurId, specialistId, projectId));
     }
 
-    //  Get Conversations by Entrepreneur
+
     @GetMapping("/entrepreneur/{entrepreneurId}")
     public ResponseEntity<List<Conversation>> getByEntrepreneur(
             @PathVariable String entrepreneurId) {
@@ -37,7 +37,7 @@ public class ConversationController {
                 conversationService.getConversationsByEntrepreneur(entrepreneurId));
     }
 
-    //  Get Conversations by Specialist
+
     @GetMapping("/specialist/{specialistId}")
     public ResponseEntity<List<Conversation>> getBySpecialist(
             @PathVariable String specialistId) {
@@ -45,7 +45,7 @@ public class ConversationController {
                 conversationService.getConversationsBySpecialist(specialistId));
     }
 
-    //  Get Messages in Conversation
+
     @GetMapping("/{conversationId}/messages")
     public ResponseEntity<List<MessageResponse>> getMessages(
             @PathVariable String conversationId) {
@@ -53,7 +53,7 @@ public class ConversationController {
                 conversationService.getMessages(conversationId));
     }
 
-    //  Delete Conversation
+
     @DeleteMapping("/{conversationId}")
     public ResponseEntity<String> deleteConversation(
             @PathVariable String conversationId) {

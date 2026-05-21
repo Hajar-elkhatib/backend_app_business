@@ -19,20 +19,20 @@ public class EntrepreneurController {
         this.entrepreneurService = entrepreneurService;
     }
 
-    // ✅ Get All
+
     @GetMapping
     public ResponseEntity<List<EntrepreneurProfileResponse>> getAllEntrepreneurs() {
         return ResponseEntity.ok(entrepreneurService.getAllEntrepreneurs());
     }
 
-    // ✅ Get Profile by userId
+
     @GetMapping("/{userId}/profile")
     public ResponseEntity<EntrepreneurProfileResponse> getProfile(
             @PathVariable String userId) {
         return ResponseEntity.ok(entrepreneurService.getProfile(userId));
     }
 
-    // ✅ Edit Profile
+
     @PutMapping("/{userId}/profile")
     public ResponseEntity<EntrepreneurProfileResponse> updateProfile(
             @PathVariable String userId,
@@ -40,7 +40,7 @@ public class EntrepreneurController {
         return ResponseEntity.ok(entrepreneurService.updateProfile(userId, request));
     }
 
-    // ✅ Delete
+
     @DeleteMapping("/{userId}")
     public ResponseEntity<String> deleteEntrepreneur(
             @PathVariable String userId) {

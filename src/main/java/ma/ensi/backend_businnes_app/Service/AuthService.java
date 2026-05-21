@@ -41,12 +41,12 @@ public class AuthService {
 
     public AuthResponse registerEntrepreneur(RegisterEntrepreneurRequest request) {
 
-        // 1. Check email already exists
+        //checking email
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
-        // 2. Create and save User
+
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
@@ -56,7 +56,7 @@ public class AuthService {
         user.setCreatedAt(new Date());
         User savedUser = userRepository.save(user);
 
-        // 3. Create and save Entrepreneur
+
         Entrepreneur entrepreneur = new Entrepreneur();
         entrepreneur.setUserId(savedUser.getId());
         entrepreneur.setCompanyName(request.getCompanyName());
@@ -64,7 +64,7 @@ public class AuthService {
         entrepreneur.setCreatedAt(new Date());
         entrepreneurRepository.save(entrepreneur);
 
-        // 4. Return response
+
         return new AuthResponse("Entrepreneur registered successfully",
                 savedUser.getId(),
                 savedUser.getRole());
@@ -72,12 +72,12 @@ public class AuthService {
 
     public AuthResponse registerSpecialist(RegisterSpecialistRequest request) {
 
-        // 1. Check email already exists
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
-        // 2. Create and save User
+
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
@@ -87,7 +87,7 @@ public class AuthService {
         user.setCreatedAt(new Date());
         User savedUser = userRepository.save(user);
 
-        // 3. Create and save Specialist
+
         Specialist specialist = new Specialist();
         specialist.setUserId(savedUser.getId());
         specialist.setFullName(request.getFullName());
@@ -106,26 +106,26 @@ public class AuthService {
         specialist.setCreatedAt(new Date());
         specialistRepository.save(specialist);
 
-        // 4. Return response
+
         return new AuthResponse("Specialist registered successfully",
                 savedUser.getId(),
                 savedUser.getRole());
     }
     public LoginResponse login(LoginRequest request) {
 
-        // 1. Find user by email
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email not found"));
 
-        // 2. Check password
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Wrong password");
         }
 
-        // 3. Generate token
+
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 
-        // 4. Return response
+
         return new LoginResponse(
                 token,
                 user.getId(),

@@ -25,7 +25,7 @@ public class WSController {
     @MessageMapping("/chat.send")
     public void sendMessage(@Payload SendMessageRequest request) {
 
-        // 1. Save message to MongoDB
+
         MessageResponse savedMessage = conversationService.saveMessage(request);
 
         // 2. Broadcast to all users in this conversation
