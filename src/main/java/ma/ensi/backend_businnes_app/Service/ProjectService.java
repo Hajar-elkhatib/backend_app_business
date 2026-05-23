@@ -5,6 +5,8 @@ import ma.ensi.backend_businnes_app.Repository.core.ProjectRepository;
 import ma.ensi.backend_businnes_app.DTOS.request.CreateProjectRequest;
 import ma.ensi.backend_businnes_app.DTOS.request.UpdateProjectRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.ProjectResponse;
+import ma.ensi.backend_businnes_app.DTOS.request.ReportRequest;
+
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -15,9 +17,14 @@ import java.util.stream.Collectors;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final AnalysisService analysisService;
+    private final ReportService reportService;
 
-    public ProjectService(ProjectRepository projectRepository) {
+    public ProjectService(ProjectRepository projectRepository, AnalysisService analysisService,
+                          ReportService reportService) {
         this.projectRepository = projectRepository;
+        this.analysisService = analysisService;
+        this.reportService = reportService;
     }
 
 
@@ -103,7 +110,9 @@ public class ProjectService {
     }
 
 
+    // ✅ Submit Project → automatically triggers analysis
     public ProjectResponse submitProject(String projectId) {
+
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
@@ -111,9 +120,32 @@ public class ProjectService {
             throw new RuntimeException("Only DRAFT projects can be submitted");
         }
 
+        // 1. Change status to SUBMITTED
         project.setProjectStatus("SUBMITTED");
-        Project saved = projectRepository.save(project);
-        return mapToResponse(saved);
+        projectRepository.save(project);
+
+        // 2. Trigger full analysis automatically
+        analysisService.analyzeProject(projectId);      // Business validation
+        analysisService.analyzeMarket(projectId);        // Market analysis
+        analysisService.analyzeSentiment(               // Sentiment analysis
+                projectId,
+                project.getOpinions() != null ?
+                        project.getOpinions() : "No opinions provided",
+                "FOUNDER_NOTES"
+        );
+        analysisService.recommendSpecialists(projectId); // Specialist recommendation
+
+        // 3. Create report automatically
+        ReportRequest reportRequest = new ReportRequest();
+        reportRequest.setProjectId(projectId);
+        reportRequest.setTitle("Analysis Report - " + project.getTitle());
+        reportRequest.setSummary("Auto-generated report after project submission");
+        reportRequest.setReportType("AI_GENERATED");
+        reportRequest.setRegion(project.getRegion());
+        reportRequest.setModelVersion("v1.0");
+        reportService.createReport(reportRequest);
+
+        return mapToResponse(project);
     }
 
 
