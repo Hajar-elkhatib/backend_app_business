@@ -55,14 +55,21 @@ pipeline {
             }
         }
 
+        stage('Deploy avec Ansible') {
+            steps {
+                // Cette commande demande à Jenkins de lancer proprement le playbook partagé sur la VM Préprod
+                sh 'ssh -o StrictHostKeyChecking=no azureuser@74.161.163.110 "ansible-playbook -i ~/ansible/inventory.ini ~/ansible/deploy.yml"'
+            }
+        }
+
     }
 
     post {
         success {
-            echo '✅ Pipeline backend réussi !'
+            echo ' Pipeline backend réussi !'
         }
         failure {
-            echo '❌ Pipeline backend échoué — vérifier les logs'
+            echo ' Pipeline backend échoué — vérifier les logs'
         }
         always {
             cleanWs()
