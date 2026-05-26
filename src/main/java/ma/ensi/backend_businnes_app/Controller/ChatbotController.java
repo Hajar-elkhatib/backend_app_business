@@ -1,6 +1,8 @@
 package ma.ensi.backend_businnes_app.Controller;
 
+import ma.ensi.backend_businnes_app.DTOS.request.CreateChatRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.ChatMessageResponse;
+import ma.ensi.backend_businnes_app.Model.core.Chat;
 import ma.ensi.backend_businnes_app.Service.ChatbotService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,31 @@ public class ChatbotController {
 
     public ChatbotController(ChatbotService chatbotService) {
         this.chatbotService = chatbotService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Chat> createChat(@RequestBody CreateChatRequest request) {
+        return ResponseEntity.ok(chatbotService.createChat(request));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Chat>> listChats(
+            @RequestParam String userId,
+            @RequestParam(required = false) String projectId) {
+        return ResponseEntity.ok(chatbotService.listChats(userId, projectId));
+    }
+
+    @GetMapping("/chat/{chatId}")
+    public ResponseEntity<Chat> getChat(@PathVariable String chatId) {
+        return ResponseEntity.ok(chatbotService.getChat(chatId));
+    }
+
+    @DeleteMapping("/{chatId}")
+    public ResponseEntity<Void> deleteChat(
+            @PathVariable String chatId,
+            @RequestParam(required = false) String userId) {
+        chatbotService.deleteChat(chatId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     // ✅ Send message — returns immediately

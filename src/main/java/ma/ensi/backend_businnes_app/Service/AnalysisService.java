@@ -3,6 +3,7 @@ package ma.ensi.backend_businnes_app.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ma.ensi.backend_businnes_app.DTOS.response.StartupSuccessResponse;
+import ma.ensi.backend_businnes_app.DTOS.request.BusinessValidationRequest;
 import ma.ensi.backend_businnes_app.Model.analysis.BusinessIdeaAnalysis;
 import ma.ensi.backend_businnes_app.Model.analysis.MarketAnalysis;
 import ma.ensi.backend_businnes_app.Model.analysis.SentimentAnalysis;
@@ -62,7 +63,16 @@ public class AnalysisService {
     }
 
     public BusinessIdeaAnalysis analyzeProject(String projectId) {
+        return analyzeProject(projectId, null);
+    }
+
+    public BusinessIdeaAnalysis analyzeProject(String projectId, BusinessValidationRequest request) {
         Project project = findProject(projectId);
+
+        String feedback = request == null ? null : request.getOpinions();
+        if (feedback != null && !feedback.isBlank()) {
+            project.setOpinions(mergeOpinions(project.getOpinions(), feedback));
+        }
 
         Map<String, Object> payload = buildBusinessValidationPayload(project);
         Map<String, Object> response = postForMap("/api/v1/business-validation/score", payload);
@@ -334,6 +344,19 @@ public class AnalysisService {
                 .map(String::trim)
                 .filter(item -> !item.isBlank())
                 .collect(Collectors.toList());
+    }
+
+    private String mergeOpinions(String existing, String incoming) {
+        if (incoming == null || incoming.isBlank()) {
+            return existing;
+        }
+        if (existing == null || existing.isBlank()) {
+            return incoming.trim();
+        }
+        if (existing.contains(incoming.trim())) {
+            return existing;
+        }
+        return existing.trim() + System.lineSeparator() + incoming.trim();
     }
 
     private String toJson(Object value) {
