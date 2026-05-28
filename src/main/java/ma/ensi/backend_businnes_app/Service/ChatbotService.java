@@ -4,6 +4,7 @@ import ma.ensi.backend_businnes_app.Model.ai.AIRequest;
 import ma.ensi.backend_businnes_app.Model.ai.AIResponse;
 import ma.ensi.backend_businnes_app.Model.core.Chat;
 import ma.ensi.backend_businnes_app.Model.social.Message;
+import ma.ensi.backend_businnes_app.DTOS.request.CreateChatRequest;
 import ma.ensi.backend_businnes_app.Repository.chatbot.AIRequestRepository;
 import ma.ensi.backend_businnes_app.Repository.chatbot.AIResponseRepository;
 import ma.ensi.backend_businnes_app.Repository.core.ChatRepository;
@@ -49,6 +50,49 @@ public class ChatbotService {
         this.messageRepository = messageRepository;
         this.aiRequestRepository = aiRequestRepository;
         this.aiResponseRepository = aiResponseRepository;
+    }
+
+    public Chat createChat(CreateChatRequest request) {
+        if (request == null || request.getUserId() == null || request.getUserId().isBlank()) {
+            throw new RuntimeException("User is required");
+        }
+
+        Chat chat = new Chat();
+        chat.setUserId(request.getUserId());
+        chat.setProjectId(blankToNull(request.getProjectId()));
+        chat.setTitle(defaultText(request.getTitle(), "New conversation"));
+        chat.setChatLabel(defaultText(request.getChatLabel(), "AI Assistant"));
+        chat.setContextType(defaultText(request.getContextType(), chat.getProjectId() == null ? "GENERAL" : "PROJECT_VALIDATION"));
+        chat.setCreatedAt(new Date());
+        return chatRepository.save(chat);
+    }
+
+    public List<Chat> listChats(String userId, String projectId) {
+        if (userId == null || userId.isBlank()) {
+            return List.of();
+        }
+        List<Chat> chats = chatRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (projectId == null || projectId.isBlank()) {
+            return chats;
+        }
+        return chats.stream()
+                .filter(chat -> projectId.equals(chat.getProjectId()))
+                .collect(Collectors.toList());
+    }
+
+    public Chat getChat(String chatId) {
+        return chatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Chat not found"));
+    }
+
+    public void deleteChat(String chatId, String userId) {
+        Chat chat = chatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Chat not found"));
+        if (userId != null && !userId.isBlank() && !userId.equals(chat.getUserId())) {
+            throw new RuntimeException("Chat not found");
+        }
+        messageRepository.deleteByChatId(chatId);
+        chatRepository.deleteById(chatId);
     }
 
     // ✅ Async chat — returns immediately with messageId
@@ -219,6 +263,10 @@ public class ChatbotService {
 
     private String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private List<String> splitOpinions(String opinions) {
