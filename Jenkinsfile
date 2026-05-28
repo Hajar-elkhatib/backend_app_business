@@ -8,20 +8,20 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('1. Checkout') {
             steps {
                 checkout scm
                 echo 'Code récupéré depuis GitHub ✓'
             }
         }
 
-        stage('Build Spring Boot') {
+        stage('2. Build Spring Boot') {
             steps {
                 sh 'mvn clean install -DskipTests'
             }
         }
 
-        stage('Analyse SonarQube') {
+        stage('3. Analyse SonarQube') {
             steps {
                 withSonarQubeEnv('sonarqube') {
                     sh 'mvn sonar:sonar -Dsonar.projectKey=backend-app -Dsonar.projectName=backend-app'
@@ -29,35 +29,43 @@ pipeline {
             }
         }
 
-        stage('Tests') {
+        stage('4. Tests') {
             steps {
                 sh 'mvn test || true'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('5. Build Docker Image') {
             steps {
                 sh "docker build -t ${IMAGE}:${TAG} ."
                 sh "docker tag ${IMAGE}:${TAG} ${IMAGE}:latest"
             }
         }
 
-        stage('Push Docker Hub') {
+
+        stage('6. Security Scan: Docker Image (Trivy)') {
+            steps {
+                echo 'Scanning Backend Image with Trivy...'
+
+                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --exit-code 1 --severity CRITICAL ${IMAGE}:${TAG}"
+            }
+        }
+
+        stage('7. Push Docker Hub') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-hub',
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS')]) {
-                    sh "echo $PASS | docker login -u $USER --password-stdin"
+                    sh "echo \$PASS | docker login -u \$USER --password-stdin"
                     sh "docker push ${IMAGE}:${TAG}"
                     sh "docker push ${IMAGE}:latest"
                 }
             }
         }
 
-        stage('Deploy avec Ansible') {
+        stage('8. Deploy avec Ansible') {
             steps {
-                // Cette commande demande à Jenkins de lancer proprement le playbook partagé sur la VM Préprod
                 sh 'ssh -o StrictHostKeyChecking=no azureuser@74.161.163.110 "ansible-playbook -i ~/ansible/inventory.ini ~/ansible/deploy.yml"'
             }
         }
@@ -66,10 +74,10 @@ pipeline {
 
     post {
         success {
-            echo ' Pipeline backend réussi !'
+            echo 'Pipeline backend réussi !'
         }
         failure {
-            echo ' Pipeline backend échoué — vérifier les logs'
+            echo 'Pipeline backend échoué — vérifier les logs'
         }
         always {
             cleanWs()
