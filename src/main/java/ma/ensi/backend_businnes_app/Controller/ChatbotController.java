@@ -1,6 +1,7 @@
 package ma.ensi.backend_businnes_app.Controller;
 
 import ma.ensi.backend_businnes_app.DTOS.request.CreateChatRequest;
+import ma.ensi.backend_businnes_app.DTOS.request.ChatbotMessageRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.ChatMessageResponse;
 import ma.ensi.backend_businnes_app.Model.core.Chat;
 import ma.ensi.backend_businnes_app.Service.ChatbotService;
@@ -24,6 +25,12 @@ public class ChatbotController {
     @PostMapping
     public ResponseEntity<Chat> createChat(@RequestBody CreateChatRequest request) {
         return ResponseEntity.ok(chatbotService.createChat(request));
+    }
+
+    @PostMapping("/message")
+    public CompletableFuture<ResponseEntity<ChatMessageResponse>> chatMessage(
+            @RequestBody ChatbotMessageRequest request) {
+        return chatbotService.chatMessage(request).thenApply(ResponseEntity::ok);
     }
 
     @GetMapping

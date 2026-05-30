@@ -11,10 +11,13 @@ import java.util.Date;
 public class ReportResponse {
     private String id;
     private String projectId;
+    private String analysisId;
     private String title;
     private String summary;
     private String reportType;
+    private String content;
     private String pdfUrl;
+    private String generatedBy;
     private String region;
     private String modelVersion;
     private Date createdAt;

@@ -8,6 +8,8 @@ public class ReportRequest {
     private String title;
     private String summary;
     private String reportType;   // "AI_GENERATED" | "SPECIALIST" | "COMBINED"
+    private String content;
+    private String generatedBy;
     private String region;
     private String modelVersion;
 }
