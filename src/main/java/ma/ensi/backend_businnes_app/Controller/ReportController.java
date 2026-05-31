@@ -67,8 +67,9 @@ public class ReportController {
     @GetMapping("/{reportId}/download")
     public ResponseEntity<byte[]> downloadReport(@PathVariable String reportId) throws IOException {
         byte[] content = reportService.downloadReport(reportId);
+        String filename = reportService.getDownloadFilename(reportId);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=business-validation-report.pdf")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(content);
     }
