@@ -16,8 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.zip.DeflaterOutputStream;
 import java.util.stream.Collectors;
 
 @Service
@@ -250,17 +254,19 @@ public class ReportService {
     private byte[] buildPdf(ReportDocument document, Report report) throws IOException {
         String page1 = renderBusinessPlanPage(document, report);
         String page2 = renderAnalysisPage(document);
+        LogoImage logo = loadLogoImage();
 
         List<byte[]> objects = new ArrayList<>();
         objects.add(pdfObject("<< /Type /Catalog /Pages 2 0 R >>"));
         objects.add(pdfObject("<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>"));
-        objects.add(pdfObject("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R /F3 9 0 R >> >> >>"));
+        objects.add(pdfObject("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R /F3 9 0 R >> /XObject << /Logo 10 0 R >> >> >>"));
         objects.add(pdfStream(page1));
-        objects.add(pdfObject("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R /F3 9 0 R >> >> >>"));
+        objects.add(pdfObject("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 7 0 R /F2 8 0 R /F3 9 0 R >> /XObject << /Logo 10 0 R >> >> >>"));
         objects.add(pdfStream(page2));
         objects.add(pdfObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"));
         objects.add(pdfObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"));
         objects.add(pdfObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>"));
+        objects.add(logo.toPdfObject());
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write("%PDF-1.4\n".getBytes(StandardCharsets.ISO_8859_1));
@@ -285,7 +291,7 @@ public class ReportService {
     private String renderBusinessPlanPage(ReportDocument doc, Report report) {
         PdfCanvas pdf = new PdfCanvas();
         pdf.background();
-        pdf.header("NexusAI", doc.title(), doc.projectName());
+        pdf.header("VentureLens", "VentureLens Business Validation Report", doc.projectName());
         pdf.text(420, 710, "Generated " + date(report.getCreatedAt()), "F1", 9, 0.36, 0.38, 0.45);
         pdf.badge(420, 682, statusLabel(number(map(doc.analysis()).get("finalScore"))));
 
@@ -317,7 +323,7 @@ public class ReportService {
         Map<String, Object> analysis = doc.analysis();
         PdfCanvas pdf = new PdfCanvas();
         pdf.background();
-        pdf.header("NexusAI", "AI Validation Analysis", doc.projectName());
+        pdf.header("VentureLens", "AI Validation Analysis", doc.projectName());
 
         double y = 650;
         pdf.scoreCard(48, y, "Final Validation Score", number(analysis.get("finalScore")));
@@ -346,6 +352,45 @@ public class ReportService {
         }
         pdf.footer(2);
         return pdf.content();
+    }
+
+    private LogoImage loadLogoImage() throws IOException {
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream("branding/venturelens-logo-light.png")) {
+            if (input == null) {
+                throw new IOException("PDF logo resource not found: branding/venturelens-logo-light.png");
+            }
+            BufferedImage image = ImageIO.read(input);
+            if (image == null) {
+                throw new IOException("PDF logo resource could not be decoded.");
+            }
+            ByteArrayOutputStream raw = new ByteArrayOutputStream();
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    int argb = image.getRGB(x, y);
+                    int alpha = (argb >>> 24) & 0xff;
+                    int red = (argb >>> 16) & 0xff;
+                    int green = (argb >>> 8) & 0xff;
+                    int blue = argb & 0xff;
+                    if (alpha < 255) {
+                        red = blendOnWhite(red, alpha);
+                        green = blendOnWhite(green, alpha);
+                        blue = blendOnWhite(blue, alpha);
+                    }
+                    raw.write(red);
+                    raw.write(green);
+                    raw.write(blue);
+                }
+            }
+            ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+            try (DeflaterOutputStream deflater = new DeflaterOutputStream(compressed)) {
+                raw.writeTo(deflater);
+            }
+            return new LogoImage(image.getWidth(), image.getHeight(), compressed.toByteArray());
+        }
+    }
+
+    private int blendOnWhite(int channel, int alpha) {
+        return Math.round((channel * alpha + 255 * (255 - alpha)) / 255f);
     }
 
     private byte[] pdfObject(String value) {
@@ -455,6 +500,19 @@ public class ReportService {
             Map<String, Object> analysis
     ) {}
 
+    private record LogoImage(int width, int height, byte[] rgbData) {
+        byte[] toPdfObject() throws IOException {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.write(("<< /Type /XObject /Subtype /Image /Width " + width
+                    + " /Height " + height
+                    + " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length "
+                    + rgbData.length + " >>\nstream\n").getBytes(StandardCharsets.ISO_8859_1));
+            out.write(rgbData);
+            out.write("\nendstream".getBytes(StandardCharsets.ISO_8859_1));
+            return out.toByteArray();
+        }
+    }
+
     private final class PdfCanvas {
         private final StringBuilder body = new StringBuilder();
 
@@ -469,9 +527,11 @@ public class ReportService {
         }
 
         void header(String brand, String title, String projectName) {
-            text(48, 762, brand, "F2", 15, 0.08, 0.09, 0.12);
+            logoImage(48, 755, 150, 36);
             text(48, 724, title, "F2", 24, 0.08, 0.09, 0.12);
-            text(48, 704, projectName, "F1", 11, 0.36, 0.38, 0.45);
+            text(48, 704, "Preliminary Lean Business Plan & AI Validation Analysis", "F2", 10, 0.31, 0.28, 0.90);
+            text(48, 688, "Validate your idea. Understand your risks. Move forward.", "F3", 9, 0.36, 0.38, 0.45);
+            text(48, 672, projectName, "F1", 11, 0.36, 0.38, 0.45);
         }
 
         void sectionTitle(double x, double y, String title) {
@@ -531,8 +591,12 @@ public class ReportService {
         }
 
         void footer(int page) {
-            text(48, 30, "NexusAI Business Validator", "F1", 8, 0.45, 0.47, 0.55);
+            text(48, 30, "VentureLens", "F1", 8, 0.45, 0.47, 0.55);
             text(540, 30, "Page " + page + " of 2", "F1", 8, 0.45, 0.47, 0.55);
+        }
+
+        void logoImage(double x, double y, double w, double h) {
+            body.append(String.format(Locale.US, "q %.1f 0 0 %.1f %.1f %.1f cm /Logo Do Q\n", w, h, x, y));
         }
 
         void badge(double x, double y, String label) {
