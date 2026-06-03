@@ -1,12 +1,15 @@
 package ma.ensi.backend_businnes_app.Model.analysis;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -17,25 +20,33 @@ public class BusinessIdeaAnalysis {
     @Id
     private String id;
 
-    @Indexed(unique = true)         // One analysis record per project at a time
-    private String projectId;       // → Project._id
+    @Indexed
+    private String projectId;
 
-    private double predictionScore; // raw model output probability
-    private String predictionLabel; // "VIABLE" | "RISKY" | "NOT_VIABLE"
+    private double predictionScore;
+    private String predictionLabel;
+    private double successProbability;
+    private String modelMode;
     private double confidenceScore;
-    private double finalScore;      // weighted composite score
+    private double finalScore;
+    private double startupSuccessScore;
     private double marketAnalysisScore;
+    private double marketOpinionScore;
     private double tractionPerEmployee;
     private double revenuePerUser;
     private double burnToRevenueRatio;
 
-    private String strengths;         // text summary
-    private String weaknesses;        // text summary
-    private String warnings;          // critical flags
-    private String recommendations;   // high-level action items (detailed ones in Recommendation)
+    private List<String> strengths;
+    private List<String> weaknesses;
+    private List<String> recommendations;
+    private List<String> warnings;
+    private List<String> generatedNeeds;
+
+    private String interpretation;
+    private String interpretationSource;
+    private Map<String, Object> shapExplanation;
+    private Map<String, Object> rawAnalysis;
 
     private String modelVersion;
-
     private Date createdAt;
 }
-

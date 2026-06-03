@@ -1,12 +1,12 @@
 package ma.ensi.backend_businnes_app.Model.social;
 
-
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.util.Date;
 
 @Data
@@ -19,15 +19,17 @@ public class SpecialistRecommendation {
     private String id;
 
     @Indexed
-    private String projectId;        // → Project._id
+    private String projectId;
 
     @Indexed
-    private String specialistId;     // → Specialist._id
+    private String specialistId;
 
-    private double recommendedScore; // 0.0 – 1.0
+    private String specialistName;
+    private String expertiseDomain;
+    private double recommendedScore;
     private int rank;
-    private String scoreDetails;     // JSON breakdown of scoring factors
-    private String reason;           // human-readable explanation
-
+    private String scoreDetails;
+    private String reason;
+    private String generatedNeeds;
     private Date createdAt;
 }

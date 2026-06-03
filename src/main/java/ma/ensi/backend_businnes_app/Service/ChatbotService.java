@@ -3,13 +3,17 @@ package ma.ensi.backend_businnes_app.Service;
 import ma.ensi.backend_businnes_app.Model.ai.AIRequest;
 import ma.ensi.backend_businnes_app.Model.ai.AIResponse;
 import ma.ensi.backend_businnes_app.Model.core.Chat;
+import ma.ensi.backend_businnes_app.Model.core.Project;
 import ma.ensi.backend_businnes_app.Model.social.Message;
+import ma.ensi.backend_businnes_app.DTOS.request.ChatMessageSendRequest;
 import ma.ensi.backend_businnes_app.DTOS.request.CreateChatRequest;
+import ma.ensi.backend_businnes_app.DTOS.request.ChatbotMessageRequest;
 import ma.ensi.backend_businnes_app.Repository.chatbot.AIRequestRepository;
 import ma.ensi.backend_businnes_app.Repository.chatbot.AIResponseRepository;
 import ma.ensi.backend_businnes_app.Repository.core.ChatRepository;
 import ma.ensi.backend_businnes_app.Repository.core.ProjectRepository;
 import ma.ensi.backend_businnes_app.Repository.social.MessageRepository;
+import ma.ensi.backend_businnes_app.DTOS.response.ChatExchangeResponse;
 import ma.ensi.backend_businnes_app.DTOS.response.ChatMessageResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -56,33 +60,41 @@ public class ChatbotService {
         if (request == null || request.getUserId() == null || request.getUserId().isBlank()) {
             throw new RuntimeException("User is required");
         }
+        if (request.getProjectId() == null || request.getProjectId().isBlank()) {
+            throw new RuntimeException("Project is required");
+        }
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new RuntimeException("Project not found"));
 
         Chat chat = new Chat();
         chat.setUserId(request.getUserId());
-        chat.setProjectId(blankToNull(request.getProjectId()));
-        chat.setTitle(defaultText(request.getTitle(), "New conversation"));
+        chat.setProjectId(request.getProjectId());
+        chat.setProjectName(defaultText(project.getTitle(), "Selected project"));
+        chat.setTitle(defaultText(request.getTitle(), "Advisor - " + chat.getProjectName()));
         chat.setChatLabel(defaultText(request.getChatLabel(), "AI Assistant"));
-        chat.setContextType(defaultText(request.getContextType(), chat.getProjectId() == null ? "GENERAL" : "PROJECT_VALIDATION"));
+        chat.setContextType(defaultText(request.getContextType(), "PROJECT_VALIDATION"));
         chat.setCreatedAt(new Date());
-        return chatRepository.save(chat);
+        chat.setUpdatedAt(chat.getCreatedAt());
+        return withProjectName(chatRepository.save(chat));
     }
 
     public List<Chat> listChats(String userId, String projectId) {
         if (userId == null || userId.isBlank()) {
             return List.of();
         }
-        List<Chat> chats = chatRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<Chat> chats = chatRepository.findByUserIdOrderByUpdatedAtDesc(userId);
         if (projectId == null || projectId.isBlank()) {
-            return chats;
+            return chats.stream().map(this::withProjectName).collect(Collectors.toList());
         }
         return chats.stream()
                 .filter(chat -> projectId.equals(chat.getProjectId()))
+                .map(this::withProjectName)
                 .collect(Collectors.toList());
     }
 
     public Chat getChat(String chatId) {
-        return chatRepository.findById(chatId)
-                .orElseThrow(() -> new RuntimeException("Chat not found"));
+        return withProjectName(chatRepository.findById(chatId)
+                .orElseThrow(() -> new RuntimeException("Chat not found")));
     }
 
     public void deleteChat(String chatId, String userId) {
@@ -95,24 +107,57 @@ public class ChatbotService {
         chatRepository.deleteById(chatId);
     }
 
+    public CompletableFuture<ChatMessageResponse> chatMessage(ChatbotMessageRequest request) {
+        if (request.getChatId() == null || request.getChatId().isBlank()) {
+            CreateChatRequest create = new CreateChatRequest();
+            create.setUserId(request.getUserId());
+            create.setProjectId(request.getProjectId());
+            create.setContextType("PROJECT_VALIDATION");
+            Chat chat = createChat(create);
+            request.setChatId(chat.getId());
+        }
+        return chat(request.getChatId(), request.getUserId(), request.getMessage());
+    }
+
+    public CompletableFuture<ChatExchangeResponse> sendChatMessage(String chatId, ChatMessageSendRequest request) {
+        return handleChat(chatId, request == null ? "" : request.getMessage(), request == null || request.getFastMode() == null || request.getFastMode());
+    }
+
     // ✅ Async chat — returns immediately with messageId
     // Frontend polls GET /api/chatbot/{messageId}/status to get response
     @Async
     public CompletableFuture<ChatMessageResponse> chat(String chatId,
                                                        String userId,
                                                        String userMessage) {
+        return handleChat(chatId, userMessage, true).thenApply(ChatExchangeResponse::getAssistantMessage);
+    }
+
+    @Async
+    protected CompletableFuture<ChatExchangeResponse> handleChat(String chatId,
+                                                                 String userMessage,
+                                                                 boolean fastMode) {
         // 1. Check chat exists
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new RuntimeException("Chat not found"));
+        if (chat.getProjectId() == null || chat.getProjectId().isBlank()) {
+            throw new RuntimeException("This conversation is not linked to a project");
+        }
+        Project project = projectRepository.findById(chat.getProjectId())
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+        String cleanMessage = defaultText(userMessage, "").trim();
+        if (cleanMessage.isBlank()) {
+            throw new RuntimeException("Message is required");
+        }
 
         // 2. Save user message immediately
         Message userMsg = new Message();
         userMsg.setChatId(chatId);
-        userMsg.setRole("USER");
-        userMsg.setContent(userMessage);
+        userMsg.setRole("user");
+        userMsg.setContent(cleanMessage);
         userMsg.setSenderType("ENTREPRENEUR");
         userMsg.setTimestamp(new Date());
-        messageRepository.save(userMsg);
+        Message savedUserMsg = messageRepository.save(userMsg);
+        updateChatAfterUserMessage(chat, cleanMessage);
 
         // 3. Load history
         List<Map<String, Object>> history = messageRepository
@@ -127,16 +172,17 @@ public class ChatbotService {
 
         // 4. Build request
         Map<String, Object> request = new LinkedHashMap<>();
-        request.put("message", userMessage);
+        request.put("message", cleanMessage);
         request.put("chat_id", chatId);
-        request.put("user_id", userId);
+        request.put("user_id", chat.getUserId());
         request.put("conversation_history", history);
-        request.put("project_data", buildProjectContext(chat.getProjectId(), chat.getContextType()));
+        request.put("project_data", buildProjectContext(project, chat.getContextType()));
+        request.put("fast_mode", fastMode);
 
         // 5. Save AI Request with PENDING status
         AIRequest aiRequest = new AIRequest();
         aiRequest.setChatId(chatId);
-        aiRequest.setPrompt(userMessage);
+        aiRequest.setPrompt(cleanMessage);
         aiRequest.setRequestType("CHATBOT");
         aiRequest.setEndpoint("/api/v1/chatbot/message");
         aiRequest.setStatus("PENDING");
@@ -153,7 +199,7 @@ public class ChatbotService {
             if (response == null) {
                 throw new RuntimeException("Empty chatbot response");
             }
-            String answer = text(response, "answer", "");
+            String answer = normalizeAnswer(text(response, "answer", ""), cleanMessage, project);
 
             // 7. Save AI Response
             AIResponse aiResponse = new AIResponse();
@@ -172,21 +218,21 @@ public class ChatbotService {
             // 9. Save AI message
             Message aiMsg = new Message();
             aiMsg.setChatId(chatId);
-            aiMsg.setRole("ASSISTANT");
+            aiMsg.setRole("assistant");
             aiMsg.setContent(answer);
             aiMsg.setSenderType("AI");
             aiMsg.setTimestamp(new Date());
             Message savedAiMsg = messageRepository.save(aiMsg);
+            chat.setUpdatedAt(savedAiMsg.getTimestamp());
+            chatRepository.save(chat);
 
             // 10. Return completed response
-            ChatMessageResponse result = new ChatMessageResponse();
-            result.setId(savedAiMsg.getId());
+            ChatExchangeResponse result = new ChatExchangeResponse();
             result.setChatId(chatId);
-            result.setRole("ASSISTANT");
-            result.setContent(answer);
-            result.setSenderType("AI");
-            result.setTimestamp(savedAiMsg.getTimestamp());
-
+            result.setUserMessage(toResponse(savedUserMsg));
+            result.setAssistantMessage(toResponse(savedAiMsg));
+            result.setSourcesUsed(stringList(response.get("sources_used")));
+            result.setIntent(text(response, "intent", "business_advisor"));
             return CompletableFuture.completedFuture(result);
 
         } catch (Exception e) {
@@ -221,52 +267,44 @@ public class ChatbotService {
                 }).collect(Collectors.toList());
     }
 
-    private Map<String, Object> buildProjectContext(String projectId, String contextType) {
+    private Map<String, Object> buildProjectContext(Project project, String contextType) {
         Map<String, Object> projectData = new LinkedHashMap<>();
-        if (projectId != null && !projectId.isBlank()) {
-            projectRepository.findById(projectId).ifPresent(project -> {
-                if (contextType != null && !contextType.isBlank()) {
-                    projectData.put("context_type", contextType);
-                }
-                projectData.put("project_id", project.getId());
-                projectData.put("project_name", defaultText(project.getTitle(), "Untitled project"));
-                projectData.put("project_description", defaultText(project.getDescription(), ""));
-                projectData.put("title", defaultText(project.getTitle(), "Untitled project"));
-                projectData.put("description", defaultText(project.getDescription(), ""));
-                projectData.put("sector", defaultText(project.getSector(), "Other"));
-                projectData.put("keyword", project.getSector());
-                projectData.put("country", defaultText(project.getCountry(), "Morocco"));
-                projectData.put("country_code", project.getCountryCode());
-                projectData.put("region", project.getRegion());
-                projectData.put("founder_experience_years", project.getFounderExperienceYears());
-                projectData.put("funding_rounds", Math.max(project.getFundingRounds(), 1));
-                projectData.put("team_size", Math.max(project.getTeamSize(), 1));
-                projectData.put("market_size_billion", Math.max(project.getMarketSizeBillion(), 0.0));
-                projectData.put("market_growth_rate_percent", project.getMarketGrowthRatePercent());
-                projectData.put("product_traction_users", (int) Math.max(project.getProductTractionUsers(), 0.0));
-                projectData.put("burn_rate_million", Math.max(project.getBurnRateMillion(), 0.0));
-                projectData.put("revenue_million", Math.max(project.getRevenueMillion(), 0.000001));
-                projectData.put("investor_type", defaultText(project.getInvestorType(), "none"));
-                projectData.put("founder_background", "first_time");
-                projectData.put("competition_level", project.getCompetitionLevel());
-                projectData.put("search_trend_score", project.getSearchTrendScore());
-                projectData.put("use_world_bank", project.isUserWordBank());
-                projectData.put("project_stage", project.getProjectStatus());
-                projectData.put("location", project.getRegion());
-                projectData.put("top_k", 5);
-                projectData.put("opinions", splitOpinions(project.getOpinions()));
-                projectData.put("needs", splitOpinions(project.getOpinions()));
-            });
+        if (contextType != null && !contextType.isBlank()) {
+            projectData.put("context_type", contextType);
         }
-        return projectData.isEmpty() ? null : projectData;
+        projectData.put("project_id", project.getId());
+        projectData.put("project_name", defaultText(project.getTitle(), "Untitled project"));
+        projectData.put("project_description", defaultText(project.getDescription(), ""));
+        projectData.put("title", defaultText(project.getTitle(), "Untitled project"));
+        projectData.put("description", defaultText(project.getDescription(), ""));
+        projectData.put("sector", defaultText(project.getSector(), "Other"));
+        projectData.put("keyword", project.getSector());
+        projectData.put("country", defaultText(project.getCountry(), "Morocco"));
+        projectData.put("country_code", project.getCountryCode());
+        projectData.put("region", project.getRegion());
+        projectData.put("founder_experience_years", project.getFounderExperienceYears());
+        projectData.put("funding_rounds", Math.max(project.getFundingRounds(), 1));
+        projectData.put("team_size", Math.max(project.getTeamSize(), 1));
+        projectData.put("market_size_billion", Math.max(project.getMarketSizeBillion(), 0.0));
+        projectData.put("market_growth_rate_percent", project.getMarketGrowthRatePercent());
+        projectData.put("product_traction_users", (int) Math.max(project.getProductTractionUsers(), 0.0));
+        projectData.put("burn_rate_million", Math.max(project.getBurnRateMillion(), 0.0));
+        projectData.put("revenue_million", Math.max(project.getRevenueMillion(), 0.000001));
+        projectData.put("investor_type", defaultText(project.getInvestorType(), "none"));
+        projectData.put("founder_background", "first_time");
+        projectData.put("competition_level", project.getCompetitionLevel());
+        projectData.put("search_trend_score", project.getSearchTrendScore());
+        projectData.put("use_world_bank", project.isUserWordBank());
+        projectData.put("project_stage", project.getProjectStatus());
+        projectData.put("location", project.getRegion());
+        projectData.put("top_k", 5);
+        projectData.put("opinions", splitOpinions(project.getOpinions()));
+        projectData.put("needs", splitOpinions(project.getOpinions()));
+        return projectData;
     }
 
     private String defaultText(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value;
-    }
-
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value;
     }
 
     private List<String> splitOpinions(String opinions) {
@@ -282,6 +320,80 @@ public class ChatbotService {
     private String text(Map<String, Object> source, String key, String defaultValue) {
         Object value = source.get(key);
         return value == null ? defaultValue : String.valueOf(value);
+    }
+
+    private Chat withProjectName(Chat chat) {
+        if (chat == null || chat.getProjectId() == null || chat.getProjectId().isBlank()) {
+            return chat;
+        }
+        projectRepository.findById(chat.getProjectId())
+                .ifPresent(project -> chat.setProjectName(defaultText(project.getTitle(), "Selected project")));
+        if (chat.getUpdatedAt() == null) {
+            chat.setUpdatedAt(chat.getCreatedAt());
+        }
+        return chat;
+    }
+
+    private void updateChatAfterUserMessage(Chat chat, String userMessage) {
+        chat.setUpdatedAt(new Date());
+        if (isSignificantTitleMessage(userMessage) && isInitialTitle(chat.getTitle())) {
+            chat.setTitle(toConversationTitle(userMessage));
+        }
+        chatRepository.save(chat);
+    }
+
+    private boolean isInitialTitle(String title) {
+        if (title == null || title.isBlank()) return true;
+        return title.equalsIgnoreCase("New conversation") || title.startsWith("Advisor - ");
+    }
+
+    private boolean isSignificantTitleMessage(String message) {
+        String lower = message == null ? "" : message.trim().toLowerCase();
+        return lower.length() > 8
+                && !List.of("hi", "hello", "hey", "bonjour", "salut", "salam").contains(lower);
+    }
+
+    private String toConversationTitle(String message) {
+        String cleaned = message.replaceAll("\\s+", " ").trim();
+        return cleaned.length() <= 45 ? cleaned : cleaned.substring(0, 42).trim() + "...";
+    }
+
+    private String normalizeAnswer(String answer, String userMessage, Project project) {
+        String value = defaultText(answer, "");
+        if (value.isBlank() || value.toLowerCase().contains("no project data received")) {
+            if (isGreeting(userMessage)) {
+                return "Hello! I can help you analyze " + defaultText(project.getTitle(), "this project")
+                        + ", understand its validation score, explore market potential, generate a short business plan, or identify suitable specialists. What would you like to work on?";
+            }
+            return "I could not prepare a reliable answer for this project yet. Please try again with a more specific question about the score, market, risks, business plan, or next steps.";
+        }
+        return value;
+    }
+
+    private boolean isGreeting(String message) {
+        String lower = message == null ? "" : message.trim().toLowerCase();
+        return List.of("hi", "hello", "hey", "bonjour", "salut", "salam").contains(lower);
+    }
+
+    private ChatMessageResponse toResponse(Message message) {
+        ChatMessageResponse response = new ChatMessageResponse();
+        response.setId(message.getId());
+        response.setChatId(message.getChatId());
+        response.setRole(message.getRole());
+        response.setContent(message.getContent());
+        response.setSenderType(message.getSenderType());
+        response.setTimestamp(message.getTimestamp());
+        return response;
+    }
+
+    private List<String> stringList(Object value) {
+        if (value instanceof List<?> list) {
+            return list.stream().map(String::valueOf).collect(Collectors.toList());
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            return List.of(text);
+        }
+        return List.of();
     }
 
     private String trimTrailingSlash(String value) {

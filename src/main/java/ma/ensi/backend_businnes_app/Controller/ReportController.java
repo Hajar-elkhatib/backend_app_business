@@ -4,6 +4,8 @@ import ma.ensi.backend_businnes_app.DTOS.request.ReportRequest;
 import ma.ensi.backend_businnes_app.DTOS.response.ReportResponse;
 import ma.ensi.backend_businnes_app.Service.ReportService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +21,11 @@ public class ReportController {
 
     public ReportController(ReportService reportService) {
         this.reportService = reportService;
+    }
+
+    @PostMapping("/project/{projectId}/generate")
+    public ResponseEntity<ReportResponse> generateProjectReport(@PathVariable String projectId) {
+        return ResponseEntity.ok(reportService.generateProjectReport(projectId));
     }
 
     // ✅ Create Report
@@ -55,6 +62,16 @@ public class ReportController {
     public ResponseEntity<ReportResponse> getById(
             @PathVariable String reportId) {
         return ResponseEntity.ok(reportService.getReportById(reportId));
+    }
+
+    @GetMapping("/{reportId}/download")
+    public ResponseEntity<byte[]> downloadReport(@PathVariable String reportId) throws IOException {
+        byte[] content = reportService.downloadReport(reportId);
+        String filename = reportService.getDownloadFilename(reportId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(content);
     }
 
     // ✅ Delete

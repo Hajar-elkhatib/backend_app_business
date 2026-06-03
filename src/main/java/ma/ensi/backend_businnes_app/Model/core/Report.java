@@ -1,11 +1,12 @@
 package ma.ensi.backend_businnes_app.Model.core;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.util.Date;
 
 @Data
@@ -18,15 +19,16 @@ public class Report {
     private String id;
 
     @Indexed
-    private String projectId;     // → Project._id
+    private String projectId;
 
+    private String analysisId;
     private String title;
     private String summary;
-    private String reportType;    // "AI_GENERATED" | "SPECIALIST" | "COMBINED"
-    private String pdfUrl;        // e.g. "https://storage/reports/report-xyz.pdf"
+    private String reportType;
+    private String content;
+    private String pdfUrl;
+    private String generatedBy;
     private String region;
-    private String modelVersion;  // which ML model version produced this report
-
+    private String modelVersion;
     private Date createdAt;
 }
-

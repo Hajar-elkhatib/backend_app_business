@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.annotation.Transient;
 import java.util.Date;
 
 @Data
@@ -29,4 +30,8 @@ public class Chat {
     private String contextType; // "PROJECT_VALIDATION" | "GENERAL" | "COMPLAINT"
 
     private Date createdAt;
+    private Date updatedAt;
+
+    @Transient
+    private String projectName;
 }

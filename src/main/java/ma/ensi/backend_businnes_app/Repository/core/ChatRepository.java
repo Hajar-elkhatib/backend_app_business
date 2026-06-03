@@ -13,6 +13,7 @@ public interface ChatRepository extends MongoRepository<Chat, String> {
     // By user
     List<Chat> findByUserId(String userId);
     List<Chat> findByUserIdOrderByCreatedAtDesc(String userId);
+    List<Chat> findByUserIdOrderByUpdatedAtDesc(String userId);
 
     // By project
     List<Chat> findByProjectId(String projectId);

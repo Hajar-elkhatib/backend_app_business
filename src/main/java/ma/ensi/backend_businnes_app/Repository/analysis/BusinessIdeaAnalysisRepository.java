@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface BusinessIdeaAnalysisRepository extends MongoRepository<BusinessIdeaAnalysis, String> {
 
     Optional<BusinessIdeaAnalysis> findByProjectId(String projectId);
+    Optional<BusinessIdeaAnalysis> findFirstByProjectIdOrderByCreatedAtDesc(String projectId);
+    List<BusinessIdeaAnalysis> findByProjectIdOrderByCreatedAtDesc(String projectId);
     boolean existsByProjectId(String projectId);
     void deleteByProjectId(String projectId);
 
